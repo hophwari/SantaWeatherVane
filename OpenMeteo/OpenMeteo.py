@@ -17,10 +17,10 @@ def get_weather(lat, lon ):
         response = requests.get(url, params=params)
         response.raise_for_status()
         data = response.json()
-        current = data.get("current_weather")
 
-        if current:
-            return current
+
+        if data:
+            return data
         else:
             return {"error": "No current weather data available"}
     except requests.exceptions.RequestException as e:
