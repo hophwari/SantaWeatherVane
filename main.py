@@ -2,7 +2,7 @@
 import argparse
 
 from Hue.HueSwitch import HueSwitch
-from OpenMeteo.OpenMeteo import get_weather
+from OpenMeteo.OpenMeteo import get_weather, get_next_hour_gust, get_next_hour_windspeed
 
 def main():
 
@@ -16,9 +16,14 @@ def main():
     args = parser.parse_args()
 
     weather = get_weather(args.lat, args.lon)
-    print(weather)
 
-    windspeed = weather['current_weather']['windspeed']
+    windspeed = get_next_hour_windspeed(weather)["windspeed_kmh"]
+    windgust  = get_next_hour_gust(weather)["wind_gust_kmh"]
+
+    print(f"Wind Speed:  {windspeed}")
+    print(f"Wind Speed Gust:  {windgust}")
+    print(f"Wind Gust Limit:  {args.windlimit}")
+
 
     BRIDGE_IP = args.bridge
     USERNAME = args.user
@@ -27,10 +32,8 @@ def main():
 
     hue = HueSwitch(BRIDGE_IP, USERNAME, LIGHT_ID)
 
-    print(f"Wind speed {windspeed} vs wind limit  {args.windlimit}")
 
-
-    if windspeed < args.windlimit:
+    if windgust < args.windlimit:
         print(hue.turn_on())
     else:
         print(hue.turn_off())
