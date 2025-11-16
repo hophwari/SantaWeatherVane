@@ -1,8 +1,44 @@
 # Santa Weather Vane
 import argparse
+import time
+from datetime import datetime
 
 from Hue.HueSwitch import HueSwitch
 from OpenMeteo.OpenMeteo import get_weather, get_next_hour_gust, get_next_hour_windspeed
+
+
+def apply_wind_logic(windgust, windlimit, hue):
+    """
+    Turns a Hue light on/off based on time window and wind gust threshold.
+
+    Time windows:
+      - 07:00 to 09:00
+      - 16:00 to 22:00
+    """
+
+    now = datetime.now()
+    hour = now.hour
+
+    # Check if time is within either window
+    in_morning_window = 7 <= hour < 9
+    in_evening_window = 16 <= hour < 23
+
+    if in_morning_window or in_evening_window:
+        print(f"Within time window at {now.strftime('%H:%M')}.")
+
+        if windgust < windlimit:
+            result = hue.turn_on()
+            print("Wind OK — turning Santa ON.")
+            return result
+        else:
+            result = hue.turn_off()
+            print("Wind too high — turning Santa OFF.")
+            return result
+
+    else:
+        print(f"Outside active time window at {now.strftime('%H:%M')}. Doing nothing.")
+        return None
+
 
 def main():
 
@@ -15,30 +51,31 @@ def main():
     parser.add_argument("--lightname", type=str, required=True, help="Hue Bridge User Name")
     args = parser.parse_args()
 
-    weather = get_weather(args.lat, args.lon)
-
-    windspeed = get_next_hour_windspeed(weather)["windspeed_kmh"]
-    windgust  = get_next_hour_gust(weather)["wind_gust_kmh"]
-
-    print(f"Wind Speed:  {windspeed}")
-    print(f"Wind Speed Gust:  {windgust}")
-    print(f"Wind Gust Limit:  {args.windlimit}")
-
-
     BRIDGE_IP = args.bridge
     USERNAME = args.user
     NAME = args.lightname
-    LIGHT_ID = HueSwitch.find_light_by_name(BRIDGE_IP, USERNAME, NAME )
+    LIGHT_ID = HueSwitch.find_light_by_name(BRIDGE_IP, USERNAME, NAME)
 
     hue = HueSwitch(BRIDGE_IP, USERNAME, LIGHT_ID)
 
+    while True:
 
-    if windgust < args.windlimit:
-        print(hue.turn_on())
-    else:
-        print(hue.turn_off())
+        now = datetime.now()
+        print(f"Time: {now}")
 
-    print(hue.get_state())
+        weather = get_weather(args.lat, args.lon)
+
+        windspeed = get_next_hour_windspeed(weather)["windspeed_kmh"]
+        windgust  = get_next_hour_gust(weather)["wind_gust_kmh"]
+
+        print(f"Wind Speed:  {windspeed}")
+        print(f"Wind Speed Gust:  {windgust}")
+        print(f"Wind Gust Limit:  {args.windlimit}")
+
+        apply_wind_logic(windgust, args.windlimit, hue)
+        print(f"Sleeping...")
+
+        time.sleep(600)  # 600 seconds = 10 minutes
 
 
 if __name__ == "__main__":
