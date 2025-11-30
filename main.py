@@ -18,13 +18,24 @@ def apply_wind_logic(windgust, windlimit, hue):
 
     now = datetime.now()
     hour = now.hour
+    weekday = now.weekday()  # Monday = 0 ... Sunday = 7
 
-    # Check if time is within either window
+    weekday_names = ["Mon", "Tues", "Weds", "Thurs", "Fri", "Sat", "Sun"]
+    weekday_str = weekday_names[now.weekday()]
+
+    # Existing weekday windows
     in_morning_window = 7 <= hour < 9
     in_evening_window = 16 <= hour < 23
 
-    if in_morning_window or in_evening_window:
-        print(f"Within time window at {now.strftime('%H:%M')}.")
+    # New weekend window (Saturday=5, Sunday=6)
+    is_weekend = weekday >= 5
+    in_weekend_window = is_weekend and (12 <= hour < 23)
+
+    # Final combined condition
+    in_time_window = in_morning_window or in_evening_window or in_weekend_window
+
+    if in_time_window:
+        print(f"Within time window at {now.strftime('%H:%M')} on day {weekday_str}.")
 
         if windgust < windlimit:
             result = hue.turn_on()
