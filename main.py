@@ -25,14 +25,18 @@ def apply_wind_logic(windgust, windlimit, hue):
 
     # Existing weekday windows
     in_morning_window = 7 <= hour < 9
-    in_evening_window = 16 <= hour < 23
+    in_evening_window = 16 <= hour < 22
 
     # New weekend window (Saturday=5, Sunday=6)
     is_weekend = weekday >= 5
-    in_weekend_window = is_weekend and (12 <= hour < 23)
+    in_weekend_window = is_weekend and (12 <= hour < 22)
 
     # Final combined condition
     in_time_window = in_morning_window or in_evening_window or in_weekend_window
+
+    # Get Current State of Switch
+    current_state = hue.get_state()['on']
+    print (f"Current State: {current_state}")
 
     if in_time_window:
         print(f"Within time window at {now.strftime('%H:%M')} on day {weekday_str}.")
@@ -47,7 +51,13 @@ def apply_wind_logic(windgust, windlimit, hue):
             return result
 
     else:
-        print(f"Outside active time window at {now.strftime('%H:%M')}. Doing nothing.")
+        if current_state:
+            result = hue.turn_off()
+            print(f"Outside active time window at {now.strftime('%H:%M')} — turning Santa OFF.")
+            return result
+        else:
+            print(f"Outside active time window at {now.strftime('%H:%M')}. Doing nothing.")
+
         return None
 
 
@@ -74,16 +84,20 @@ def main():
         now = datetime.now()
         print(f"Time: {now}")
 
-        weather = get_weather(args.lat, args.lon)
+        try:
+            weather = get_weather(args.lat, args.lon)
 
-        windspeed = get_next_hour_windspeed(weather)["windspeed_kmh"]
-        windgust  = get_next_hour_gust(weather)["wind_gust_kmh"]
+            windspeed = get_next_hour_windspeed(weather)["windspeed_kmh"]
+            windgust  = get_next_hour_gust(weather)["wind_gust_kmh"]
 
-        print(f"Wind Speed:  {windspeed}")
-        print(f"Wind Speed Gust:  {windgust}")
-        print(f"Wind Gust Limit:  {args.windlimit}")
+            print(f"Wind Speed:  {windspeed}")
+            print(f"Wind Speed Gust:  {windgust}")
+            print(f"Wind Gust Limit:  {args.windlimit}")
 
-        apply_wind_logic(windgust, args.windlimit, hue)
+            apply_wind_logic(windgust, args.windlimit, hue)
+        except:
+            print("Error getting weather forecast")
+
         print(f"Sleeping...")
 
         time.sleep(600)  # 600 seconds = 10 minutes
